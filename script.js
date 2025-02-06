@@ -154,7 +154,7 @@ async function addTodo(event) {
   // Re-fetch the todos from the backend
   // this is necessary to update appStateTodos in case we manually changed the state in the backend (e.g. via postman),
   // or if another user can interact and change the backend state as well
-  await fetchTodos();
+  // await fetchTodos();
 
   applyFilter();
   renderTodos();
@@ -199,7 +199,7 @@ async function updateTodoState(event) {
   // Re-fetch the todos from the backend
   // this is necessary to update appStateTodos in case we manually changed the state in the backend (e.g. via postman),
   // or if another user can interact and change the backend state as well
-  await fetchTodos();
+  // await fetchTodos();
 
   setTimeout(() => {
     applyFilter(); // Reapply the filter after the delay
