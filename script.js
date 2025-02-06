@@ -1,72 +1,75 @@
+/*__________________________ GLOBAL SCOPE ____________________________*/
+
 let idCount = 0;
 
-let appState;
+let appStateTodos;
+let appStateFilters;
 
-// Check if localStorage has data
-if (localStorage.getItem("appState") === null) {
-  // If no data, initialize with default todos
-  appState = {
-    todos: [],
-    filters: {
-      all: true,
-      open: false,
-      done: false,
-    },
-  };
-} else {
-  // If data exists, parse and load it
-  appState = JSON.parse(localStorage.getItem("appState"));
-}
-/* shorter version for the above would be:
-let appState = JSON.parse(localStorage.getItem("appState")) || { todos: [], filters: {all: true, open: false, done: false]} };
-*/
+// Check localStorage for data for filters
+appStateFilters = JSON.parse(localStorage.getItem("appStateFilters")) || {
+  all: true,
+  open: false,
+  done: false,
+};
 
-// Set idCount to the highest existing ID + 1 or 0 if there are no todos
-if (appState.todos.length === 0) {
-  idCount = 0;
-} else {
-  const allIds = appState.todos.map((todo) => todo.id); // Extract all IDs into an array
-  const maxId = Math.max(...allIds); // find the highest number in the array
-  idCount = maxId; // later we use ++idCount to increment the IDs
+// Get todos data from API
+async function fetchTodos() {
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error. Status: ${response.status}`);
+    }
+    return (appStateTodos = await response.json());
+  } catch (error) {
+    console.error("Error fetching todos:", error);
+  }
 }
 
 const btnAdd = document.querySelector("#btn-add-todo");
 const btnRemoveDone = document.querySelector("#btn-remove-done");
 const inpNewTodo = document.querySelector("#inp-new-todo");
-let filteredTodos = appState.todos; // initialize filteredTodos
+let filteredTodos = appStateTodos; // initialize filteredTodos
+const apiUrl = "http://localhost:3000/todos/";
 
 /*_________________________________________________________________*/
+/*_____________________________ INIT _______________________________*/
 
-applyFilter();
-renderTodos(); // Initial rendering of the todo list
-renderFilters(); // Initial rendering of filters
-
-btnAdd.addEventListener("click", addTodo);
-btnRemoveDone.addEventListener("click", removeDoneTodos);
+init();
 
 /*_________________________________________________________________*/
+/*_____________________ FUNCTION DEFINITIONS ________________________*/
+
+async function init() {
+  await fetchTodos();
+  applyFilter();
+  renderTodos(); // Initial rendering of the todo list
+  renderFilters(); // Initial rendering of filters
+
+  btnAdd.addEventListener("click", addTodo);
+  btnRemoveDone.addEventListener("click", removeDoneTodos);
+}
 
 function applyFilter() {
-  // Reset filteredTodos to appState.todos
-  filteredTodos = appState.todos;
+  // Reset filteredTodos to appStateTodos
+  filteredTodos = appStateTodos;
 
-  // Modify filteredTodos depending on filter & todo.doneState
-  if (appState.filters.open === true) {
-    filteredTodos = filteredTodos.filter((todo) => todo.doneState === false);
-  } else if (appState.filters.done === true) {
-    filteredTodos = filteredTodos.filter((todo) => todo.doneState === true);
+  // Modify filteredTodos depending on filter & todo.done
+  if (appStateFilters.open === true) {
+    filteredTodos = filteredTodos.filter((todo) => todo.done === false);
+  } else if (appStateFilters.done === true) {
+    filteredTodos = filteredTodos.filter((todo) => todo.done === true);
   }
-  // If 'all' is selected, filteredTodos will remain as appState.todos, no change needed
+  // If 'all' is selected, filteredTodos will remain as appStateTodos, no change needed
 }
 
 // Function to render filters
-// Renders appState
+// Renders appStateFilters
 function renderFilters() {
   const filtersList = document.querySelector("#filters");
   filtersList.innerHTML = "";
 
-  // Loop through the filter keys in the appState.filters object
-  Object.keys(appState.filters).forEach((filterKey) => {
+  // Loop through the filter keys in the appStateFilters object
+  Object.keys(appStateFilters).forEach((filterKey) => {
     const filtersListEl = document.createElement("li");
     const filterRadio = document.createElement("input");
     filterRadio.type = "radio";
@@ -74,10 +77,10 @@ function renderFilters() {
     filterRadio.id = filterKey; // Set the radio button id to the filter key (all, done, open)
 
     // Set radio button status
-    filterRadio.checked = appState.filters[filterKey];
+    filterRadio.checked = appStateFilters[filterKey];
 
     // Add filterObj to radio button
-    filterRadio.filterObj = appState.filters;
+    filterRadio.filterObj = appStateFilters;
     filterRadio.filterKey = filterKey; // Store the key separately
 
     // add label for radio button
@@ -96,22 +99,22 @@ function renderFilters() {
 }
 
 // Function to render the todo list
-// Renders appState
+// Renders appStateTodos
 function renderTodos() {
   const list = document.querySelector("#list");
   list.innerHTML = ""; // Clear the existing list before rendering
 
-  // Loop through each todo item in the appState
+  // Loop through each todo item in the appStateTodos
   filteredTodos.forEach((todo) => {
     const todoLi = document.createElement("li"); // Create a list item element
     const checkbox = document.createElement("input"); // Create a checkbox input element
     checkbox.type = "checkbox"; // Set the input type to checkbox
-    checkbox.checked = todo.doneState; // Set the checkbox state based on the todo item
+    checkbox.checked = todo.done; // Set the checkbox state based on the todo item
     checkbox.id = "checkbox-" + todo.id;
 
     checkbox.todoObj = todo; // Attach the todo object to the checkbox (so the checkbox knows which to do it belongs to -> needed for definition of updateTodoState())
 
-    // Add an event listener to update the doneState when the checkbox is clicked
+    // Add an event listener to update the done when the checkbox is clicked
     checkbox.addEventListener("change", updateTodoState);
 
     const checkboxLabel = document.createElement("label");
@@ -125,7 +128,7 @@ function renderTodos() {
 }
 
 // Callback function for evenListener > to add a new todo
-// Modifies appState
+// Modifies appStateTodos
 function addTodo(event) {
   event.preventDefault();
   const inpNewTodoValue = inpNewTodo.value.trim(); // Removes spaces from input value
@@ -138,26 +141,25 @@ function addTodo(event) {
 
   // Check if user tries to add a duplicate todo
   if (
-    appState.todos.some(
+    appStateTodos.some(
       (todo) => todo.description.toLowerCase() === inpNewTodoValue.toLowerCase()
-    ) // Check if any todo in appState has a description that matches inpNewTodoValue (case-insensitive)
+    ) // Check if any todo in appStateTodos has a description that matches inpNewTodoValue (case-insensitive)
   ) {
     showHintDuplicate();
     return; // return (dont add todo)
   }
 
-  // Add new todo to appState
-  appState.todos.push({
+  // Add new todo to appStateTodos
+  appStateTodos.push({
     id: ++idCount,
     description: inpNewTodoValue,
-    doneState: false,
+    done: false,
   });
 
   applyFilter();
-  renderTodos(); // render appState
+  renderTodos(); // render appStateTodos
   inpNewTodo.value = ""; // clear input field
   inpNewTodo.focus();
-  updateLocalStorage();
 
   // Scroll the list container to the bottom after adding a todo
   const contentContainer = document.querySelector("#content");
@@ -167,26 +169,26 @@ function addTodo(event) {
   }, 100); // Small delay to ensure DOM is rendering before scrolling happens
 }
 
-// Callback function for eventListener > to update the doneState of a todo item
-// Modifies appState
+// Callback function for eventListener > to update the done of a todo item
+// Modifies appStateTodos
 function updateTodoState(event) {
   const todo = event.target.todoObj; // Get the associated todo object from the checkbox
   const currentTodoState = event.target.checked; // Get the updated checkbox state
-  todo.doneState = currentTodoState; // Update the doneState in the state object
+  todo.done = currentTodoState; // Update the done in the state object
   setTimeout(() => {
     applyFilter(); // Reapply the filter after the delay
     renderTodos(); // Re-render the todo list after the filter is applied
-    updateLocalStorage();
+    updateFiltersInLocalStorage();
   }, 800);
 }
 
 // Callback function for eventListener > to update filters
-// Modifies appState
+// Modifies appStateFilters
 function updateFilters(event) {
-  const appStateFilters = event.target.filterObj; // Reference to appState.filters
+  const appStateFilters = event.target.filterObj; // Reference to appStateFilters
   const selectedFilterKey = event.target.filterKey; // Key of the clicked filter
 
-  // Update all appState filters
+  // Update all appStateFilters
   Object.keys(appStateFilters).forEach((key) => {
     appStateFilters[key] = key === selectedFilterKey; // key === selectedFilterKey returns true or false, depending on whether the current key is the one the user selected
   });
@@ -194,17 +196,16 @@ function updateFilters(event) {
   applyFilter(); // Reapply the filter based on updated filters
   renderFilters(); // Re-render the filters based on updated filters
   renderTodos(); // Re-render the todos based on the updated filteredTodos
-  updateLocalStorage();
+  updateFiltersInLocalStorage();
 }
 
 // Callback function for eventListener > to remove done todos
-// Modifies appState
+// Modifies appStateTodos
 function removeDoneTodos(event) {
-  appState.todos = appState.todos.filter((todo) => todo.doneState !== true);
+  appStateTodos = appStateTodos.filter((todo) => todo.done !== true);
 
   applyFilter();
   renderTodos();
-  updateLocalStorage();
 }
 
 // Function that shows a hint that this to do already exists
@@ -225,7 +226,7 @@ function showHintDuplicate() {
   inpNewTodo.focus();
 }
 
-// Function to save current appState to Local Storage
-function updateLocalStorage() {
-  localStorage.setItem("appState", JSON.stringify(appState));
+// Function to save current appStateFilters to Local Storage
+function updateFiltersInLocalStorage() {
+  localStorage.setItem("appStateFilters", JSON.stringify(appStateFilters));
 }
