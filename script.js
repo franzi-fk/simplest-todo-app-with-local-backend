@@ -5,26 +5,6 @@ let idCount = 0;
 let appStateTodos;
 let appStateFilters;
 
-// Check localStorage for data for filters
-appStateFilters = JSON.parse(localStorage.getItem("appStateFilters")) || {
-  all: true,
-  open: false,
-  done: false,
-};
-
-// Get todos data from API
-async function fetchTodos() {
-  try {
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      throw new Error(`HTTP error. Status: ${response.status}`);
-    }
-    return (appStateTodos = await response.json());
-  } catch (error) {
-    console.error("Error fetching todos:", error);
-  }
-}
-
 const btnAdd = document.querySelector("#btn-add-todo");
 const btnRemoveDone = document.querySelector("#btn-remove-done");
 const inpNewTodo = document.querySelector("#inp-new-todo");
@@ -33,6 +13,13 @@ const apiUrl = "http://localhost:3000/todos/";
 
 /*_________________________________________________________________*/
 /*_____________________________ INIT _______________________________*/
+
+// Check localStorage for data for filters
+appStateFilters = JSON.parse(localStorage.getItem("appStateFilters")) || {
+  all: true,
+  open: false,
+  done: false,
+};
 
 init();
 
@@ -47,6 +34,18 @@ async function init() {
 
   btnAdd.addEventListener("click", addTodo);
   btnRemoveDone.addEventListener("click", removeDoneTodos);
+}
+
+async function fetchTodos() {
+  try {
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error. Status: ${response.status}`);
+    }
+    return (appStateTodos = await response.json());
+  } catch (error) {
+    console.error("Error fetching todos:", error);
+  }
 }
 
 function applyFilter() {
@@ -129,7 +128,7 @@ function renderTodos() {
 
 // Callback function for evenListener > to add a new todo
 // Modifies appStateTodos
-function addTodo(event) {
+async function addTodo(event) {
   event.preventDefault();
   const inpNewTodoValue = inpNewTodo.value.trim(); // Removes spaces from input value
 
@@ -149,15 +148,11 @@ function addTodo(event) {
     return; // return (dont add todo)
   }
 
-  // Add new todo to appStateTodos
-  appStateTodos.push({
-    id: ++idCount,
-    description: inpNewTodoValue,
-    done: false,
-  });
+  // Add new todo to backend
+  await postTodo(inpNewTodoValue); // pass todo description to the postTodo function
 
   applyFilter();
-  renderTodos(); // render appStateTodos
+  renderTodos();
   inpNewTodo.value = ""; // clear input field
   inpNewTodo.focus();
 
@@ -167,6 +162,26 @@ function addTodo(event) {
     // Ensure that the list container scrolls to bottom
     contentContainer.scrollTop = contentContainer.scrollHeight;
   }, 100); // Small delay to ensure DOM is rendering before scrolling happens
+}
+
+// Post new todo into backend
+async function postTodo(TodoDescription) {
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-type": "application/json" },
+      body: JSON.stringify({ description: TodoDescription, done: false }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error. Status: ${response.status}`);
+    }
+
+    const newTodo = await response.json(); // Get new todo from backend
+    appStateTodos.push(newTodo); // Update app state
+  } catch (error) {
+    console.error("Error adding todo:", error);
+  }
 }
 
 // Callback function for eventListener > to update the done of a todo item
