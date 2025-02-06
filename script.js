@@ -62,7 +62,6 @@ function applyFilter() {
 }
 
 // Function to render filters
-// Renders appStateFilters
 function renderFilters() {
   const filtersList = document.querySelector("#filters");
   filtersList.innerHTML = "";
@@ -98,7 +97,6 @@ function renderFilters() {
 }
 
 // Function to render the todo list
-// Renders appStateTodos
 function renderTodos() {
   const list = document.querySelector("#list");
   list.innerHTML = ""; // Clear the existing list before rendering
@@ -127,7 +125,6 @@ function renderTodos() {
 }
 
 // Callback function for evenListener > to add a new todo
-// Modifies appStateTodos
 async function addTodo(event) {
   event.preventDefault();
   const inpNewTodoValue = inpNewTodo.value.trim(); // Removes spaces from input value
@@ -184,21 +181,51 @@ async function postTodo(TodoDescription) {
   }
 }
 
-// Callback function for eventListener > to update the done of a todo item
-// Modifies appStateTodos
-function updateTodoState(event) {
+// Callback function for eventListener > to update the done state of a todo item
+async function updateTodoState(event) {
   const todo = event.target.todoObj; // Get the associated todo object from the checkbox
   const currentTodoState = event.target.checked; // Get the updated checkbox state
-  todo.done = currentTodoState; // Update the done in the state object
+
+  await patchTodo(todo.id, currentTodoState); // call patchTodo and pass the required information
+
   setTimeout(() => {
     applyFilter(); // Reapply the filter after the delay
     renderTodos(); // Re-render the todo list after the filter is applied
     updateFiltersInLocalStorage();
-  }, 800);
+  }, 500);
+}
+
+// Change todo done state in backend
+async function patchTodo(todoId, todoDoneState) {
+  try {
+    const response = await fetch(`${apiUrl}${todoId}`, {
+      method: "PATCH",
+      headers: { "Content-type": "application/json" },
+      body: JSON.stringify({ done: todoDoneState }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error. Status: ${response.status}`);
+    }
+
+    const updatedTodo = await response.json(); // Get updated todo from backend as a response
+
+    // Update appStateTodos
+    appStateTodos = appStateTodos.map((todo) => {
+      if (updatedTodo.id === todo.id) {
+        // use map method with id must match condition
+        todo.done = updatedTodo.done; // update todo done state
+        return todo;
+      } else {
+        return todo;
+      }
+    });
+  } catch (error) {
+    console.error("Error updating todo:", error);
+  }
 }
 
 // Callback function for eventListener > to update filters
-// Modifies appStateFilters
 function updateFilters(event) {
   const appStateFilters = event.target.filterObj; // Reference to appStateFilters
   const selectedFilterKey = event.target.filterKey; // Key of the clicked filter
@@ -215,7 +242,6 @@ function updateFilters(event) {
 }
 
 // Callback function for eventListener > to remove done todos
-// Modifies appStateTodos
 function removeDoneTodos(event) {
   appStateTodos = appStateTodos.filter((todo) => todo.done !== true);
 
