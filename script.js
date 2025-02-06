@@ -8,7 +8,7 @@ let appStateFilters;
 const btnAdd = document.querySelector("#btn-add-todo");
 const btnRemoveDone = document.querySelector("#btn-remove-done");
 const inpNewTodo = document.querySelector("#inp-new-todo");
-let filteredTodos = appStateTodos; // initialize filteredTodos
+let filteredTodos;
 const apiUrl = "http://localhost:3000/todos/";
 
 /*_________________________________________________________________*/
@@ -28,6 +28,7 @@ init();
 
 async function init() {
   await fetchTodos();
+  filteredTodos = appStateTodos;
   applyFilter();
   renderTodos(); // Initial rendering of the todo list
   renderFilters(); // Initial rendering of filters
@@ -36,6 +37,7 @@ async function init() {
   btnRemoveDone.addEventListener("click", removeDoneTodos);
 }
 
+// Function to update appStateTodos with the data from backend
 async function fetchTodos() {
   try {
     const response = await fetch(apiUrl);
@@ -48,6 +50,7 @@ async function fetchTodos() {
   }
 }
 
+// Function to apply filter and define filteredTodos
 function applyFilter() {
   // Reset filteredTodos to appStateTodos
   filteredTodos = appStateTodos;
@@ -242,11 +245,35 @@ function updateFilters(event) {
 }
 
 // Callback function for eventListener > to remove done todos
-function removeDoneTodos(event) {
-  appStateTodos = appStateTodos.filter((todo) => todo.done !== true);
+async function removeDoneTodos(event) {
+  // create array with only done todos
+  const doneTodos = appStateTodos.filter((todo) => todo.done === true);
+
+  // Loop through the done todos and delete each one from the backend
+  for (const todo of doneTodos) {
+    await deleteTodo(todo.id);
+  }
+
+  // After all deletes, update appStateTodos calling fetchTodos()
+  await fetchTodos();
 
   applyFilter();
   renderTodos();
+}
+
+// Delete todo in backend
+async function deleteTodo(todoId) {
+  try {
+    const response = await fetch(`${apiUrl}${todoId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error. Status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Error updating todo:", error);
+  }
 }
 
 // Function that shows a hint that this to do already exists
