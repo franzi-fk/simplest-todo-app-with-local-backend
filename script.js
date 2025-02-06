@@ -151,6 +151,11 @@ async function addTodo(event) {
   // Add new todo to backend
   await postTodo(inpNewTodoValue); // pass todo description to the postTodo function
 
+  // Re-fetch the todos from the backend
+  // this is necessary to update appStateTodos in case we manually changed the state in the backend (e.g. via postman),
+  // or if another user can interact and change the backend state as well
+  await fetchTodos();
+
   applyFilter();
   renderTodos();
   inpNewTodo.value = ""; // clear input field
@@ -190,6 +195,11 @@ async function updateTodoState(event) {
   const currentTodoState = event.target.checked; // Get the updated checkbox state
 
   await patchTodo(todo.id, currentTodoState); // call patchTodo and pass the required information
+
+  // Re-fetch the todos from the backend
+  // this is necessary to update appStateTodos in case we manually changed the state in the backend (e.g. via postman),
+  // or if another user can interact and change the backend state as well
+  await fetchTodos();
 
   setTimeout(() => {
     applyFilter(); // Reapply the filter after the delay
