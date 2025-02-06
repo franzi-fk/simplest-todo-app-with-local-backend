@@ -27,11 +27,11 @@ init();
 /*_____________________ FUNCTION DEFINITIONS ________________________*/
 
 async function init() {
+  renderFilters(); // Initial rendering of filters
   await fetchTodos();
   filteredTodos = appStateTodos;
   applyFilter();
   renderTodos(); // Initial rendering of the todo list
-  renderFilters(); // Initial rendering of filters
 
   btnAdd.addEventListener("click", addTodo);
   btnRemoveDone.addEventListener("click", removeDoneTodos);
